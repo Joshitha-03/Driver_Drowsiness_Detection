@@ -1,0 +1,37 @@
+# ===== Python build and cache files =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ===== Virtual environment =====
+venv/
+
+# ===== Dataset and training data =====
+train_data/
+dataset/
+*.zip
+*.rar
+*.tar
+*.gz
+
+# ===== Feature extraction files (contain large CSVs) =====
+checkpoints/
+features/
+*.csv
+*.xlsx
+
+# ===== Model weights or large ML files =====
+*.h5
+*.tflite
+*.pth
+*.pt
+
+# ===== System and config files =====
+.env
+.DS_Store
+Thumbs.db
+
+# ===== Logs and temporary files =====
+*.log
+*.tmp
