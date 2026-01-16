@@ -9,35 +9,29 @@ import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, message="SymbolDatabase.GetPrototype")
 
-# ---------------- PARAMETERS ----------------
+
 SEQ_LEN = 30
 SMOOTHING_WINDOW = 7
-EYE_CLOSED_EAR = 0.18        # EAR threshold for eye closed
-CLOSED_EYES_FRAME_THRESHOLD = 8  # frames to trigger drowsy
+EYE_CLOSED_EAR = 0.18        
+CLOSED_EYES_FRAME_THRESHOLD = 8  
 
-# Normalization constants (set according to model training)
 EAR_MIN, EAR_MAX = 0.15, 0.35
 MAR_MIN, MAR_MAX = 0.0, 0.3
 HEAD_MIN, HEAD_MAX = 0.0, 180.0
 
-# ---------------- LOAD MODEL ----------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = DrowsinessTransformer()
 model.load_state_dict(torch.load("checkpoints/best_model.pt", map_location=device))
 model.eval()
 model.to(device)
 
-# ---------------- DEQUE FOR SMOOTHING ----------------
 pred_queue = deque(maxlen=SMOOTHING_WINDOW)
 
-# ---------------- MEDIAPIPE INIT ----------------
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True)
 
-# ---------------- VIDEO CAPTURE ----------------
-cap = cv2.VideoCapture(0)
+cap = cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-# Initialize sequence with neutral "alert" values
 seq_features = [[0.5, 0.0, 0.5]] * SEQ_LEN
 
 closed_frames = 0
@@ -59,7 +53,6 @@ while True:
     else:
         ear, mar, head_angle = 0.0, 0.0, 0.0
 
-    # ---------------- NORMALIZE FEATURES ----------------
     ear_norm = np.clip((ear - EAR_MIN) / (EAR_MAX - EAR_MIN), 0, 1)
     mar_norm = np.clip((mar - MAR_MIN) / (MAR_MAX - MAR_MIN), 0, 1)
     head_norm = np.clip((head_angle - HEAD_MIN) / (HEAD_MAX - HEAD_MIN), 0, 1)
@@ -70,7 +63,7 @@ while True:
 
     pred_label = "Alert"
 
-    # ---------------- PREDICTION ----------------
+    
     if len(seq_features) == SEQ_LEN:
         x = torch.tensor([seq_features], dtype=torch.float32).to(device)  # batch=1, seq_len, features
         with torch.no_grad():
@@ -79,10 +72,9 @@ while True:
             pred = torch.argmax(out, dim=-1).item()
             pred_queue.append(pred)
 
-        # Smoothed prediction
+        
         pred_smoothed = int(np.round(np.mean(pred_queue)))
 
-        # Safety check: EAR threshold
         if ear < EYE_CLOSED_EAR:
             closed_frames += 1
         else:
@@ -93,7 +85,7 @@ while True:
         else:
             pred_label = "Alert"
 
-    # ---------------- DRAW INFO ----------------
+    
     cv2.putText(frame, f"EAR:{ear:.2f} MAR:{mar:.2f} Head:{head_angle:.1f} | Pred:{pred_label}",
                 (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                 (0,0,255) if pred_label=="Drowsy 😴" else (0,255,0), 2)
